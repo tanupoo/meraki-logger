@@ -7,10 +7,10 @@ from api import api
 
 def log_start(config):
     config.logger.info("Starting collector listening on {}://{}:{}/"
-                       .format("https" if config.server_cert else "http",
-                               config.server_address if config.server_address
+                       .format("https" if config.fastapi_cert else "http",
+                               config.fastapi_address if config.fastapi_address
                                else "*",
-                               config.server_port))
+                               config.fastapi_port))
 
 if __name__ == "__main__":
     from uvicorn import Config, Server
@@ -18,10 +18,10 @@ if __name__ == "__main__":
     config = set_config("server", loop, sys.argv[1:])
     log_start(config)
     server = Server(Config(app=api(config),
-                           host=config.server_address,
-                           port=config.server_port,
-                           ssl_certfile=config.server_cert
-                               if config.server_cert else None,
+                           host=config.fastapi_address,
+                           port=config.fastapi_port,
+                           ssl_certfile=config.fastapi_cert
+                               if config.fastapi_cert else None,
                            loop=config.loop,
                            ))
     config.loop.run_until_complete(server.serve())

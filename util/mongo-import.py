@@ -1,6 +1,9 @@
+#!/usr/bin/env python
+
 import asyncio
 import aiopg
 from copy import deepcopy
+import argparse
 import motor.motor_asyncio
 import pymongo.errors
 from pymongo import ReturnDocument
@@ -33,7 +36,7 @@ async def submit(pgconn, data):
     """
     data = {
     'ts': '2023-06-29T11:29:14.909003+09:00', 'ap_name': 'OpenRoamingTest',
-    'ev_type': 'disassociation', 'client_mac': 'CA:A2:A6:99:FB:A1',
+    'ev_type': 'disassociation', 'client_mac': 'CA:A2:A6:xx:xx:xx',
     'reason': '2'}
     """
     cur = await pgconn.cursor()
@@ -48,7 +51,7 @@ async def submit(pgconn, data):
     print(data)
 
 
-async def api(config):
+async def do_main(config):
     pgconn = await aiopg.connect(database=config.pg_db_name,
                                  user=config.pg_username,
                                  password=config.pg_password,
@@ -60,23 +63,30 @@ async def api(config):
     x_tab = x_db[config.mongo_table_name]
     tz = dtgettz(config.tz)
 
-    since = datetime.now(tz=tz)
+    until = datetime.now(tz=dtgettz("Asia/Tokyo"))
+    since = until - timedelta(seconds=period)
 
     while True:
-        await asyncio.sleep(config.interval)
-
-        until = datetime.now(tz=tz)
         query = deepcopy(query_base)
         query["$and"].extend([
             { "ts": { "$gte": since.isoformat() } },
             { "ts": { "$lt":  until.isoformat() } }
             ])
+        print(query)
         try:
             async for r in x_tab.find(query, select).sort([("_ts",-1)]):
                 await submit(pgconn, r)
         except pymongo.errors.ServerSelectionTimeoutError as e:
             print(e)
-        # copy *until* to *since* for the next.
-        since = until
+        # preparing for the next.
+        until = since
+        since = since - timedelta(seconds=period)
+        await asyncio.sleep(.01)
     pgconn.close()
+
+#
+# main
+#
+loop = asyncio.new_event_loop()
+loop.run_until_complete(do_main(period=600))
 

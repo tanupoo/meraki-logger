@@ -11,9 +11,9 @@ class ConfigModel(BaseModel):
     log_stdout: bool = False
     syslog_address: str | None
     syslog_port: int = 514
-    server_address: str = "127.0.0.1"
-    server_port: int = "8888"
-    server_cert: str | None
+    fastapi_address: str = "127.0.0.1"
+    fastapi_port: int = "8888"
+    fastapi_cert: str | None
     enable_tls: bool = False
     tz: str = "Asia/Tokyo"
     logger: Any
@@ -21,7 +21,7 @@ class ConfigModel(BaseModel):
 
     @validator("enable_tls", always=True)
     def update_enable_tls(cls, v, values, config, **kwargs):
-        return True if values["server_cert"] else False
+        return True if values["fastapi_cert"] else False
 
     class Config():
         extra = Extra.forbid

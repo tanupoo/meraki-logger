@@ -3,7 +3,8 @@ from pydantic import validator
 from typing import Any
 
 class ConfigModel(BaseModel):
-    interval: int = 300
+    enable_debug: bool = False
+    collect_interval: int = 300
     mongo_db_name: str
     mongo_table_name: str
     mongo_url: str = "mongodb://127.0.0.1:27017/apitest?retryWrites=true&w=majority"
@@ -15,7 +16,6 @@ class ConfigModel(BaseModel):
     log_stdout: bool = False
     syslog_address: str | None
     syslog_port: int = 514
-    enable_debug: bool = False
     tz: str = "Asia/Tokyo"
     logger: Any
     loop: Any
