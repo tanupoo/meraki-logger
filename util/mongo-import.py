@@ -25,7 +25,7 @@ select = {
         "ev_type": 1,
         "ap_name": 1,
         "client_mac": 1,
-        "identifier": 1,
+        "identity": 1,
         }
 
 sql_ins = """insert into deauth (
