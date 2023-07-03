@@ -3,13 +3,13 @@
 import asyncio
 import aiopg
 from copy import deepcopy
-import argparse
 import motor.motor_asyncio
 import pymongo.errors
 from pymongo import ReturnDocument
 import json
 from datetime import datetime, timedelta
 from dateutil.tz import gettz as dtgettz
+from argparse import ArgumentParser
 
 query_base = { "$and": [
     {
@@ -51,20 +51,20 @@ async def submit(pgconn, data):
     print(data)
 
 
-async def do_main(config):
-    pgconn = await aiopg.connect(database=config.pg_db_name,
-                                 user=config.pg_username,
-                                 password=config.pg_password,
+async def do_main(opt):
+    pgconn = await aiopg.connect(database=opt.pg_db_name,
+                                 user=opt.pg_username,
+                                 password=opt.pg_password,
                                  host='127.0.0.1')
     x_client = motor.motor_asyncio.AsyncIOMotorClient(
-            config.mongo_url, io_loop=config.loop,
+            opt.mongo_url, io_loop=opt.loop,
             serverSelectionTimeoutMS=2000)
-    x_db = x_client[config.mongo_db_name]
-    x_tab = x_db[config.mongo_table_name]
-    tz = dtgettz(config.tz)
+    x_db = x_client[opt.mongo_db_name]
+    x_tab = x_db[opt.mongo_table_name]
+    tz = dtgettz(opt.tz)
 
-    until = datetime.now(tz=dtgettz("Asia/Tokyo"))
-    since = until - timedelta(seconds=period)
+    until = datetime.now(tz=dtgettz(opt.tz))
+    since = until - timedelta(seconds=opt.interval)
 
     while True:
         query = deepcopy(query_base)
@@ -80,13 +80,34 @@ async def do_main(config):
             print(e)
         # preparing for the next.
         until = since
-        since = since - timedelta(seconds=period)
+        since = since - timedelta(seconds=opt.interval)
         await asyncio.sleep(.01)
     pgconn.close()
+
+ap = ArgumentParser()
+ap.add_argument("--mongo-url", action="store", dest="mongo_url",
+                default="mongodb://localhost:27017",
+                help="specify the mongodb's url.")
+ap.add_argument("--mongo-dbcol", action="store", dest="mongo_db_col_name",
+                default="fastdb/misc",
+                help="specify the db and collection name. e.g. fastdb/misc")
+ap.add_argument("--pg-db", action="store", dest="pg_db_name",
+                default="syslog",
+                help="specify the postgres db name.")
+ap.add_argument("--pg-userpass", action="store", dest="pg_userpass",
+                default="postgres:postgres",
+                help="specify the postgres's user and password.")
+ap.add_argument("-i", action="store", dest="interval",
+                type=int, default=600,
+                help="specify the interval to convert.")
+opt = ap.parse_args()
+
+opt.mongo_db_name, opt.mongo_table_name = opt.mongo_db_col_name.split("/")
+opt.pg_username, opt.pg_password = opt.pg_userpass.split(":")
 
 #
 # main
 #
 loop = asyncio.new_event_loop()
-loop.run_until_complete(do_main(period=600))
+loop.run_until_complete(do_main(opt))
 
